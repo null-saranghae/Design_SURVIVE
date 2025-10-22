@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>디자인과에서 살아남는 법</title>
+  <style>
+    /* 카드 그리드 & 카드 스타일 */
+.grid{
+  width:min(980px,92vw);
+  margin:0 auto;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:26px;
+}
+.card{
+  position:relative; display:block; text-decoration:none; color:inherit;
+  background:#fff; border:3px solid #333; box-shadow:6px 6px 0 #333;
+  transition:transform .1s ease, box-shadow .1s ease;
+}
+.card:hover{ transform:translate(-3px,-3px); box-shadow:9px 9px 0 #333; }
+.card__media{ position:relative; aspect-ratio:16/9; overflow:hidden; background:#ddd; border-bottom:3px solid #333; }
+.thumb,.preview{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.preview{ opacity:0; transition:opacity .2s ease; }
+.card:hover .thumb{ opacity:0; }
+.card:hover .preview{ opacity:1; }
+.card__body{ padding:14px 16px 18px; text-align:left; }
+.card__title{ font-family:'HeirofLightBold',sans-serif; font-size:1.4rem; margin:0 0 6px; }
+.card__desc{ margin:0; font-size:.95rem; line-height:1.35; opacity:.9; }
+.meta{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; font-size:.85rem; }
+.badge{ background:#ffda6b; border:2px solid #333; padding:4px 8px; box-shadow:3px 3px 0 #333; }
+
+    /* ✦ 메인 제목 폰트 */
+    @font-face {
+      font-family: 'HeirofLightBold';
+      src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_20-07@1.0/HeirofLightBold.woff') format('woff');
+      font-weight: normal; font-style: normal;
+    }
+    /* ✦ 본문 폰트 */
+    @font-face{
+      font-family:'DosSammul';
+      src:url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_eight@1.0/DOSSaemmul.woff') format('woff');
+      font-weight:normal; font-display:swap;
+    }
+
+    body{
+      font-family: 'DosSammul', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+      margin:0; min-height:100vh;
+    }
+
+    /* 큰 제목은 HeirofLightBold */
+    h1, .slide h2 { font-family: 'HeirofLightBold', sans-serif; }
+    h1 { font-size: 2.5rem; margin-bottom: 40px; text-shadow: 2px 2px 0 #fff; }
+
+    .btn {
+      display:inline-block; background:#73564b; color:#fff; text-decoration:none;
+      font-size:1.3rem; padding:14px 28px; border:3px solid #333; box-shadow:6px 6px 0 #333;
+      margin:12px; transition:.1s;
+    }
+    .btn:hover { transform:translate(-3px,-3px); box-shadow:9px 9px 0 #333; background:#8c6a5e; }
+
+    /* 메인화면 */
+    #app {
+      display:none; min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      text-align:center; padding:40px 16px;
+    }
+
+    /* 인트로 슬라이드 */
+    #intro {
+      position:fixed; inset:0; z-index:10; display:flex; align-items:center; justify-content:center;
+      background:#111; color:#fff;
+    }
+    .stage {
+      width:min(920px,92vw); height:min(560px,70vh); position:relative; overflow:hidden;
+      border:4px solid #333; box-shadow:8px 8px 0 rgba(0,0,0,.35); background:#000; border-radius:12px;
+    }
+    .slide {
+      position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      padding:32px; gap:16px; text-align:center;
+      opacity:0; transform:translateY(12px); transition:opacity .5s ease, transform .5s ease;
+      background-size:cover; background-position:center;
+    }
+    .slide.show { opacity:1; transform:translateY(0); }
+    .slide h2 { font-size: 2.8rem; margin: 0; text-shadow: 3px 3px 0 rgba(0,0,0,.4); color: #fff; }
+    .slide p  { font-size: 1.1rem; margin: 0; line-height: 1.6; color: #f5f5f5; text-shadow: 1px 1px 0 rgba(0,0,0,.4); }
+
+    .topbar {
+      position:absolute; top:0; left:0; right:0;
+      display:flex; justify-content:space-between; align-items:center;
+      padding:10px 14px; z-index: 2;
+    }
+    .skip, .bgm-btn {
+      pointer-events:auto; cursor:pointer; background:rgba(0,0,0,.5); color:#fff;
+      border:2px solid #fff; padding:6px 12px; border-radius:8px;
+    }
+    .hint {
+      pointer-events:none; color:#eee; font-size:.9rem; opacity:.9;
+      background:rgba(0,0,0,.35); padding:6px 10px; border-radius:8px;
+    }
+    .dots {
+      position:absolute; left:0; right:0; bottom:12px; display:flex; gap:8px; justify-content:center;
+    }
+    .dot {
+      width:10px; height:10px; border-radius:50%; background:#777;
+      box-shadow:0 0 0 2px rgba(0,0,0,.25) inset; transition:transform .2s, background .2s;
+    }
+    .dot.active { background:#ffd166; transform:scale(1.25); }
+
+    .fade-out{ animation:fadeout .45s forwards; }
+    @keyframes fadeout{ to{ opacity:0; visibility:hidden } }
+
+    /* 유튜브 플레이어를 화면 밖/보이지 않게 */
+    #ytWrap{ position:fixed; width:0; height:0; overflow:hidden; opacity:0; pointer-events:none; }
+  </style>
+</head>
+<body>
+
+  <!-- Intro Slides -->
+  <section id="intro">
+    <div class="stage">
+      <div class="topbar">
+        <div class="hint">←/→ 또는 Space로 넘기기 • S: 건너뛰기 • 🔊 버튼: BGM</div>
+        <div style="display:flex; gap:8px;">
+          <button class="bgm-btn" id="bgmBtn">🔊 BGM: OFF</button>
+          <button class="skip" id="skipBtn">건너뛰기</button>
+        </div>
+      </div>
+      <div class="dots" id="dots"></div>
+    </div>
+  </section>
+
+  <!-- 숨김 YouTube 플레이어 -->
+  <div id="ytWrap"><div id="ytPlayer"></div></div>
+
+  <!-- Main App -->
+  <main id="app">
+    <h1>디자인과에서 살아남는 법</h1>
+  
+    <section class="grid">
+      <!-- 예스맨(스파이 찾기) -->
+      <a class="card" href="https://null-saranghae.github.io/Yesman2/" target="_blank" rel="noopener">
+        <div class="card__media">
+          <img class="thumb" src="YM.png" alt="예스맨 게임 썸네일">
+        </div>
+        <div class="card__body">
+          <h3 class="card__title">예스맨을 찾아라</h3>
+          <p class="card__desc">거절 대신 “예”만 외치는 스파이를 찾아 팀플을 성사시키자!</p>
+          <div class="meta">
+            <span class="badge">GitHub</span>
+            <span class="badge">⏱ 1~2분</span>
+          </div>
+        </div>
+      </a>
+  
+      <!-- 과제깨기 -->
+      <a class="card" href="https://null-saranghae.github.io/BREAKING_assignment/" target="_blank" rel="noopener">
+        <div class="card__media">
+          <img class="thumb" src="AB.png" alt="과제깨기 썸네일">
+        </div>
+        <div class="card__body">
+          <h3 class="card__title">과제깨기</h3>
+          <p class="card__desc">스프레드시트 셀(벽돌)을 박살내며 한 학기를 버텨라!</p>
+          <div class="meta">
+            <span class="badge">GitHub</span>
+            <span class="badge">⏱ 3~5분</span>
+          </div>
+        </div>
+      </a>
+    </section>
+  </main>
+  
+
+  <script>
+    /* ========== 슬라이드 데이터 ========== */
+    const slides = [
+      { title:"디자인과에서 살아남기", text:"당신은 선택받은 디자인과 용사...", bg:"" },
+      { title:"?", text:"...라고 생각하는 한 학부생입니다", bg:"" },
+      { title:"환영합니다", text:"[이번 학기]라는 마왕을 물리치기위해 당신은..", bg:"" },
+      { title:"시련", text:"그래요, 시련을 통과해야만 하죠...", bg:"" },
+      { title:"걱정마세요... 용사(아님)여.", text:"이미 본 전공의 3학년까지 전진한 당신에게는 쉬울테니..", bg:"" },
+      { title:"그럼,", text:"두가지 시련이 준비되어있습니다.", bg:"" },
+      { title:"첫번째 시련,", text:"우리 누구에게나 거절당할 용기가 필요한 법. 그러나 그들 중 한명만은 저희가 심어둔 스파이..! 그는 여러분을 받아줄겁니다..", bg:"" },
+      { title:"두번째 시련,", text:"그 스파이와 함께 토벌을 나서주시면 되겠습니다. 토벌 대상은 다름아닌, 여러분들에겐 최악의 적인... [과제]가 되겠군요. ", bg:"" },
+      { title:"그럼, 행운을 빌죠", text:"행운을 빌죠. 중요해서 두번 말합니다.", bg:"" }
+    ];
+
+    /* ========== 슬라이드 렌더/조작 ========== */
+    const intro = document.getElementById('intro');
+    const stage = intro.querySelector('.stage');
+    const dotsWrap = document.getElementById('dots');
+    const skipBtn = document.getElementById('skipBtn');
+    const app = document.getElementById('app');
+
+    const slideEls = slides.map((s, idx) => {
+      const el = document.createElement('section');
+      el.className = 'slide' + (idx === 0 ? ' show' : '');
+      if (s.bg) el.style.backgroundImage = `linear-gradient(rgba(0,0,0,.35),rgba(0,0,0,.35)), url('${s.bg}')`;
+      const h = document.createElement('h2'); h.textContent = s.title;
+      const p = document.createElement('p');  p.textContent = s.text;
+      el.append(h,p);
+      stage.append(el);
+      return el;
+    });
+
+    const dotEls = slides.map((_, i) => {
+      const d = document.createElement('div');
+      d.className = 'dot' + (i===0?' active':'');
+      dotsWrap.append(d);
+      return d;
+    });
+
+    let i = 0;
+    function show(n){
+      slideEls[i].classList.remove('show');
+      dotEls[i].classList.remove('active');
+      i = Math.max(0, Math.min(slides.length-1, n));
+      slideEls[i].classList.add('show');
+      dotEls[i].classList.add('active');
+    }
+
+    function finishIntro(){
+      intro.classList.add('fade-out');
+      setTimeout(()=>{
+        intro.style.display='none';
+        app.style.display='flex';
+      }, 450);
+    }
+
+    function next(){ if (i < slides.length-1) show(i+1); else finishIntro(); }
+    function prev(){ if (i>0) show(i-1); }
+
+    stage.addEventListener('click', next);
+    document.addEventListener('keydown', (e)=>{
+      if (e.code === 'ArrowRight' || e.code === 'Space') { e.preventDefault(); next(); }
+      else if (e.code === 'ArrowLeft') { e.preventDefault(); prev(); }
+      else if (e.key.toLowerCase() === 's') { finishIntro(); }
+    });
+    skipBtn.addEventListener('click', (e)=>{ e.stopPropagation(); finishIntro(); });
+
+    /* ========== YouTube 오디오 버튼 ========== */
+    // 1) Iframe API 로드
+    const ytScript = document.createElement('script');
+    ytScript.src = "https://www.youtube.com/iframe_api";
+    document.body.appendChild(ytScript);
+
+    let ytReady = false;
+    let player = null;
+    let bgmOn = false;
+
+    // 2) API 콜백 (전역 함수여야 함)
+    window.onYouTubeIframeAPIReady = function(){
+      player = new YT.Player('ytPlayer', {
+        videoId: '-Bw_42P6D3o', // <- 네가 준 유튜브 링크의 ID
+        playerVars: {
+          autoplay: 0, controls: 0, disablekb: 1, playsinline: 1,
+          modestbranding: 1, rel: 0
+        },
+        events: {
+          onReady: () => { ytReady = true; player.setVolume(50); } // 기본 50%
+        }
+      });
+    };
+
+    // 3) 버튼 토글
+    const bgmBtn = document.getElementById('bgmBtn');
+    bgmBtn.addEventListener('click', (e)=>{
+      e.stopPropagation(); // 슬라이드 넘김 방지
+      if (!ytReady) { bgmBtn.textContent = '⏳ 로딩중...'; return; }
+      if (!bgmOn) {
+        try { player.playVideo(); } catch {}
+        bgmOn = true;
+        bgmBtn.textContent = '🔊 BGM: ON';
+      } else {
+        try { player.pauseVideo(); } catch {}
+        bgmOn = false;
+        bgmBtn.textContent = '🔇 BGM: OFF';
+      }
+    });
+  </script>
+</body>
+</html>
